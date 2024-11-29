@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntSize
 import androidx.compose.ui.unit.takeOrElse
 import androidx.compose.ui.unit.toSize
-import io.github.reactivecircus.cache4k.Cache
+import androidx.collection.LruCache
 import xyz.teamgravity.bottomnavigationglassmorphic.haze.android.createBlurImageFilterWithMask
 import xyz.teamgravity.bottomnavigationglassmorphic.haze.android.drawLinearGradientProgressiveEffect
 import xyz.teamgravity.bottomnavigationglassmorphic.haze.android.toShader
@@ -530,9 +530,7 @@ sealed interface HazeProgressive {
 }
 
 private val renderEffectCache by lazy {
-    Cache.Builder<RenderEffectParams, RenderEffect>()
-        .maximumCacheSize(10)
-        .build()
+    LruCache<RenderEffectParams, RenderEffect>(10)
 }
 
 internal data class RenderEffectParams(
@@ -575,15 +573,14 @@ internal fun HazeChildNode.getOrCreateRenderEffect(
 @OptIn(ExperimentalHazeApi::class)
 internal fun CompositionLocalConsumerModifierNode.getOrCreateRenderEffect(params: RenderEffectParams): RenderEffect? {
     log(HazeChildNode.TAG) { "getOrCreateRenderEffect: $params" }
-    val cached = renderEffectCache.get(params)
+    val cached = renderEffectCache[params]
     if (cached != null) {
         log(HazeChildNode.TAG) { "getOrCreateRenderEffect. Returning cached: $params" }
         return cached
     }
 
     log(HazeChildNode.TAG) { "getOrCreateRenderEffect. Creating: $params" }
-    return createRenderEffect(params)
-        ?.also { renderEffectCache.put(params, it) }
+    return createRenderEffect(params)?.also { renderEffectCache.put(params, it) }
 }
 
 internal fun CompositionLocalConsumerModifierNode.createRenderEffect(params: RenderEffectParams): RenderEffect?{
